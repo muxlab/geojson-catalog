@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no"/>
+    <title>GeoJSON Catalog</title>
+    <link rel="shortcut icon" href="img/favicon.ico"> 
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootstrap-social/4.10.1/bootstrap-social.min.css" />
+    <link rel="stylesheet" href="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+    <style>
+    /* Header */
+    .navbar-inverse {
+      opacity: 0.85;
+    }
+    .navbar-inverse .navbar-nav>li.username>a {
+      color: #b0e0e6;
+    }
+    .navbar-inverse .navbar-nav>li.username>a:hover {
+      color: #e6b6b0;
+    }
+
+    /* GeoJSON Layout */
+    #containerDOM {
+      margin-top: 70px;
+    }
+    .thumbnail-map {
+      height: 300px;
+    }
+    h3 {
+      font-size: 16px;
+    }
+    p {
+      font-size: 8px;
+    }
+    </style>
+  </head>
+
+  <body>
+    <div id="navbarDOM"></div>
+    <div id="containerDOM"></div>
+    <div id="modalDOM"></div>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.14.2/react.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.14.2/react-dom.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/react-bootstrap/0.27.3/react-bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js"></script>
+    <script src="//cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+
+    <!--[if lt IE 9]>
+      <script>
+        (function(){
+          var ef = function(){};
+          window.console = window.console || {log:ef,warn:ef,error:ef,dir:ef};
+        }());
+      </script>
+      <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.2/html5shiv-printshiv.min.js"></script>
+      <script src="//cdnjs.cloudflare.com/ajax/libs/es5-shim/3.4.0/es5-shim.js"></script>
+      <script src="//cdnjs.cloudflare.com/ajax/libs/es5-shim/3.4.0/es5-sham.js"></script>
+    <![endif]-->
+    
+    <script type="text/babel">
+    $(function() {
+
+      console.log('%c⚛ GeoJSON Catalog: Hello geohacker! ⚛', 'font-family:monospace;font-size:16px;color:darkblue;');
+
+      // UGitHub User Name
+      var username = location.href.split("?")[1].split("=")[1];
+
+      // Request for GitHub to get geojson files info
+      $.get('https://api.github.com/search/code?q=filename:geojson+extension:geojson+user:' + username).then(function (res) {
+
+        //console.log(res);
+
+        // Your GeoJSONs
+        var geojsonInfos = res.items;
+        console.log('%cYour geojsons ☟', 'font-family:monospace;font-size:14px;color:darkblue;');
+        console.log(geojsonInfos);
+
+        // Do you have GeoJSON on GitHub?
+        var noGeojson;
+        if(geojsonInfos.length === 0) {
+          noGeojson = true;
+        }
+        else {
+          noGeojson = false;
+        }
+
+        // React Bootstrap Components
+        var Navbar = ReactBootstrap.Navbar;
+        var NavBrand = ReactBootstrap.NavBrand;
+        var Nav = ReactBootstrap.Nav;
+        var NavItem = ReactBootstrap.NavItem;
+        var NavDropdown = ReactBootstrap.NavDropdown;
+        var MenuItem = ReactBootstrap.MenuItem;
+        var Grid = ReactBootstrap.Grid;
+        var Row = ReactBootstrap.Row;
+        var Col = ReactBootstrap.Col;
+        var Thumbnail = ReactBootstrap.Thumbnail;
+        var Button = ReactBootstrap.Button;
+        var Modal = ReactBootstrap.Modal;
+
+        $.get('https://api.github.com/search/users?q=' + username).then(function (res2) {
+          //console.log(res2);
+          var userInfo = res2.items[0];
+
+          // Header
+          const navbarInstance = (
+            <Navbar inverse toggleNavKey={0} fixedTop={true}>
+              <NavBrand><a href="index.html">GeoJSON Catalog</a></NavBrand>
+              <Nav right eventKey={0}> {/* This is the eventKey referenced */}
+                <NavItem eventKey={1} className="username" href={"https://github.com/" + username}>{username}</NavItem>
+                <NavItem eventKey={2} href="https://github.com/muxlab">MUX Lab</NavItem>
+                <NavItem eventKey={3} href="http://koop.dc.esri.com/">Koop</NavItem>
+                <NavItem eventKey={4} href="http://geojson.io/#map=2/20.0/0.0">geojson.io</NavItem>
+              </Nav>
+            </Navbar>
+          );
+
+          ReactDOM.render(navbarInstance, document.getElementById("navbarDOM"));
+        });
+
+        // Leaflet Map Component
+        var LeafletMap = React.createClass({
+          getInitialState() {
+            return {
+              map: null,
+              geojsonUrl: null
+            };
+          },
+          componentDidMount: function() {
+            // Leaflet Map Init
+            var map = L.map(this.props.mapid).setView([51.505, -0.09], 1);
+            L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 18,
+              attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+                '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+              id: 'osm'
+            }).addTo(map);
+            //console.log(this.props.geojson);
+            if(this.props.geojson !== undefined || this.props.geojson !== null || this.props.geojson !== "") {
+              $.get(this.props.geojsonUrl).then(function (res) {
+                //console.log("geojson: ", $.parseJSON(res));
+                var geojson = $.parseJSON(res);
+                L.geoJson(geojson, {style: {weight: 2}}).addTo(map);
+                map.fitBounds(L.geoJson(geojson).getBounds());
+              });
+            }
+
+            this.setState({ map: map });
+          },
+          render() {
+            return (
+              <div id={this.props.mapid} className={'thumbnail-map'}></div>
+            )
+          }
+        });
+
+        // Item Layout
+        var GeoJSONFilesLayout = React.createClass({
+          getInitialState() {
+            return {
+              geojsonInfos : geojsonInfos
+            };
+          },
+          showGitHub(e) {
+            //console.log(e);
+            location.href = e.target.parentNode.title;
+          },
+          render() {
+            var showGitHub = this.showGitHub;
+            var items = this.state.geojsonInfos.map(function(info) {
+              //console.log(info.name);
+              //console.log("githubkey: ", info.html_url.split("/"));
+              var githubkey;
+              var urlSplit = info.html_url.split("/");
+              var flag = false;
+              urlSplit.map(function(h) {
+                //console.log(h, flag);
+                if(flag === true) {
+                  githubkey = h;
+                  flag = false;
+                }
+                if(h === "blob") {
+                  flag = true;
+                }
+              });
+              return (
+                <Col xs={12} md={4} key={info.name}>
+                  <div className={"thumbnail"}>
+                    <LeafletMap mapid={"map_" + info.name} geojsonUrl={"https://raw.githubusercontent.com/" + info.repository.full_name + "/" + githubkey + "/" + info.path} />
+                    <h3>{info.name.split(".")[0]}</h3>
+                    <p>{"Repo: " + info.repository.name}</p>
+                    <p>
+                      <Button className="btn-github" title={"https://github.com/" + info.repository.full_name + "/tree/master/" + info.path} onClick={showGitHub}><span className="fa fa-github"></span> GitHub</Button>
+                    </p>
+                  </div>
+                </Col>
+              );
+            });
+            //console.log(items);
+            return (
+              <Grid>
+                <Row>
+                  {items}
+                </Row>
+              </Grid>
+            )
+          }
+        });
+
+        ReactDOM.render(<GeoJSONFilesLayout />, document.getElementById("containerDOM"));
+
+        // Modal for a result of no geojson
+        const Example = React.createClass({
+          getInitialState() {
+            return { showModal: noGeojson };
+          },
+          close() {
+            this.setState({ showModal: false });
+            location.href = "index.html";
+          },
+          open() {
+            this.setState({ showModal: true });
+          },
+          render() {
+            return (
+              <div>
+                <Modal show={this.state.showModal} onHide={this.close}>
+                  <Modal.Header closeButton>
+                    <Modal.Title>Hi, {username}!</Modal.Title>
+                  </Modal.Header>
+                  <Modal.Body>
+                    <h4>You have no GeoJSON on GitHub.</h4>
+                    <p></p>
+                  </Modal.Body>
+                  <Modal.Footer>
+                    <Button onClick={this.close}>Back</Button>
+                  </Modal.Footer>
+                </Modal>
+              </div>
+            );
+          }
+        });
+
+        ReactDOM.render(<Example/>, document.getElementById("modalDOM"));
+
+      }, function(err) {
+        alert("Oops! Are you GitHub user? Check your user name.");
+        location.href = "index.html";
+      });
+    });
+    </script>
+  </body>
+</html>
