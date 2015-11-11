@@ -4,7 +4,7 @@
 
 You can list and map own geojson files on GitHub.
 
-[GeoJSON Catalog Site](https://muxlab.github.io/geojson-catalog/)
+[GeoJSON Catalog Site](http://muxlab.github.io/geojson-catalog/)
 
 ## Limitations
 
