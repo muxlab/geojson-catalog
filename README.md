@@ -1,5 +1,7 @@
 # GeoJSON Catalog
 
+[![Join the chat at https://gitter.im/muxlab/geojson-catalog](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/muxlab/geojson-catalog?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 <img src="img/GeoJSONCatalog_readme.png" width="600px"/>
 
 You can list and map own geojson files on GitHub.
